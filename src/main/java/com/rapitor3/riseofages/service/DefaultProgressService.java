@@ -1,6 +1,6 @@
 package com.rapitor3.riseofages.service;
 
-import com.rapitor3.riseofages.data.CoreSavedData;
+import com.rapitor3.riseofages.era.EraCalculationService;
 import com.rapitor3.riseofages.institution.InstitutionState;
 import com.rapitor3.riseofages.progress.ProgressEvent;
 import com.rapitor3.riseofages.progress.SubjectProgressData;
@@ -17,6 +17,7 @@ import java.util.Optional;
  * Responsibilities:
  * - apply progression events
  * - update institution progression
+ * - recalculate era progression
  * - persist updated subject state
  * <p>
  * This service does not access CoreSavedData directly.
@@ -24,46 +25,120 @@ import java.util.Optional;
  */
 public class DefaultProgressService implements ProgressService {
 
+    /**
+     * Repository used to load and persist subject progression data.
+     */
     private final ProgressRepository repository;
 
     /**
-     * Creates progress service with explicit repository dependency.
-     *
-     * @param repository progression repository
+     * Service used to evaluate and apply era progression.
      */
-    public DefaultProgressService(ProgressRepository repository) {
+    private final EraCalculationService eraCalculationService;
+
+    /**
+     * Creates a new progress service instance.
+     *
+     * @param repository            progression repository
+     * @param eraCalculationService era recalculation service
+     */
+    public DefaultProgressService(
+            ProgressRepository repository,
+            EraCalculationService eraCalculationService
+    ) {
         this.repository = Objects.requireNonNull(repository, "ProgressRepository must not be null");
+        this.eraCalculationService = Objects.requireNonNull(
+                eraCalculationService,
+                "EraCalculationService must not be null"
+        );
     }
 
+    /**
+     * Records a progression event.
+     * <p>
+     * Flow:
+     * 1. load or create subject progression data
+     * 2. update target institution
+     * 3. recalculate era
+     * 4. persist updated state
+     *
+     * @param level server level
+     * @param event progression event
+     */
     @Override
     public void record(ServerLevel level, ProgressEvent event) {
         Objects.requireNonNull(level, "ServerLevel must not be null");
         Objects.requireNonNull(event, "ProgressEvent must not be null");
 
+        // Ignore no-op events early.
         if (!event.isPositive()) {
             return;
         }
 
+        // Load or create the target subject state.
         SubjectProgressData subjectData = repository.getOrCreate(level, event.subjectRef());
 
+        // Resolve or initialize the institution state targeted by this event.
         InstitutionState institutionState = subjectData.getOrCreateInstitution(event.institutionKey());
 
+        /*
+         * Apply raw contribution value.
+         *
+         * For now we convert the event amount into:
+         * - total raw accumulated value
+         * - simple normalized level progress
+         *
+         * This is placeholder balancing logic.
+         * It can later be extracted into a dedicated progression calculator.
+         */
         long rawValue = (long) Math.floor(event.amount());
         institutionState.addValue(rawValue);
 
+        /*
+         * Temporary progression formula:
+         * every 100 points of event amount roughly correspond to one level.
+         *
+         * Example:
+         * 5.0 -> +0.05 progress
+         */
         double normalizedProgressDelta = event.amount() / 100.0D;
         institutionState.addProgress(normalizedProgressDelta);
 
+        /*
+         * Simple level-up logic.
+         *
+         * When progress reaches 1.0 or more:
+         * - increase institution level
+         * - keep overflow progress
+         */
         while (institutionState.getProgress() >= 1.0D) {
+            double overflow = institutionState.getProgress() - 1.0D;
             institutionState.levelUp();
-            institutionState.setProgress(institutionState.getProgress() - 1.0D);
+            institutionState.setProgress(overflow);
         }
 
+        // Update subject timestamp before era recalculation.
         subjectData.touch();
 
+        /*
+         * Recalculate era after institution progression changes.
+         *
+         * This updates:
+         * - current era if thresholds are reached
+         * - progress towards next era
+         */
+        eraCalculationService.apply(subjectData);
+
+        // Persist the updated subject state.
         repository.save(level, subjectData);
     }
 
+    /**
+     * Finds progression data for the given subject.
+     *
+     * @param level      server level
+     * @param subjectRef subject reference
+     * @return optional progression data
+     */
     @Override
     public Optional<SubjectProgressData> find(ServerLevel level, SubjectRef subjectRef) {
         Objects.requireNonNull(level, "ServerLevel must not be null");
@@ -72,6 +147,13 @@ public class DefaultProgressService implements ProgressService {
         return repository.find(level, subjectRef);
     }
 
+    /**
+     * Returns existing progression data or creates a new one.
+     *
+     * @param level      server level
+     * @param subjectRef subject reference
+     * @return existing or newly created progression data
+     */
     @Override
     public SubjectProgressData getOrCreate(ServerLevel level, SubjectRef subjectRef) {
         Objects.requireNonNull(level, "ServerLevel must not be null");

@@ -32,6 +32,7 @@ package com.rapitor3.riseofages.era;
  * extended toward medieval stages.
  * </p>
  */
+@Deprecated
 public enum Era {
 
     /**

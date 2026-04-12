@@ -8,10 +8,7 @@ import com.rapitor3.riseofages.era.EraRegistry;
 import com.rapitor3.riseofages.institution.InstitutionRegistry;
 import com.rapitor3.riseofages.repository.ProgressRepository;
 import com.rapitor3.riseofages.repository.SavedDataProgressRepository;
-import com.rapitor3.riseofages.service.DefaultProgressService;
-import com.rapitor3.riseofages.service.DefaultSubjectService;
-import com.rapitor3.riseofages.service.ProgressService;
-import com.rapitor3.riseofages.service.SubjectService;
+import com.rapitor3.riseofages.service.*;
 
 /**
  * Bootstrap factory for wiring the core progression system.
@@ -61,8 +58,11 @@ public final class CoreBootstrap {
         EraCalculationService eraCalculationService =
                 DefaultEraCalculationService.withDefaults(eraRegistry);
 
+        EraService eraService =
+                new DefaultEraService(progressRepository, eraCalculationService);
+
         ProgressService progressService =
-                new DefaultProgressService(progressRepository, eraCalculationService);
+                new DefaultProgressService(progressRepository, eraService);
 
         return new CoreServices(
                 eraRegistry,
@@ -70,6 +70,7 @@ public final class CoreBootstrap {
                 progressRepository,
                 subjectService,
                 eraCalculationService,
+                eraService,
                 progressService
         );
     }

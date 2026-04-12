@@ -1,6 +1,5 @@
 package com.rapitor3.riseofages.service;
 
-import com.rapitor3.riseofages.era.EraCalculationService;
 import com.rapitor3.riseofages.institution.InstitutionState;
 import com.rapitor3.riseofages.progress.ProgressEvent;
 import com.rapitor3.riseofages.progress.SubjectProgressData;
@@ -17,7 +16,7 @@ import java.util.Optional;
  * Responsibilities:
  * - apply progression events
  * - update institution progression
- * - recalculate era progression
+ * - delegate era recalculation to EraService
  * - persist updated subject state
  * <p>
  * This service does not access CoreSavedData directly.
@@ -31,24 +30,24 @@ public class DefaultProgressService implements ProgressService {
     private final ProgressRepository repository;
 
     /**
-     * Service used to evaluate and apply era progression.
+     * Service used to evaluate and persist era progression.
      */
-    private final EraCalculationService eraCalculationService;
+    private final EraService eraService;
 
     /**
      * Creates a new progress service instance.
      *
-     * @param repository            progression repository
-     * @param eraCalculationService era recalculation service
+     * @param repository  progression repository
+     * @param eraService  era orchestration service
      */
     public DefaultProgressService(
             ProgressRepository repository,
-            EraCalculationService eraCalculationService
+            EraService eraService
     ) {
         this.repository = Objects.requireNonNull(repository, "ProgressRepository must not be null");
-        this.eraCalculationService = Objects.requireNonNull(
-                eraCalculationService,
-                "EraCalculationService must not be null"
+        this.eraService = Objects.requireNonNull(
+                eraService,
+                "EraService must not be null"
         );
     }
 
@@ -58,8 +57,8 @@ public class DefaultProgressService implements ProgressService {
      * Flow:
      * 1. load or create subject progression data
      * 2. update target institution
-     * 3. recalculate era
-     * 4. persist updated state
+     * 3. persist institution progress
+     * 4. recalculate and persist era
      *
      * @param level server level
      * @param event progression event
@@ -116,20 +115,17 @@ public class DefaultProgressService implements ProgressService {
             institutionState.setProgress(overflow);
         }
 
-        // Update subject timestamp before era recalculation.
+        // Update subject timestamp before persistence.
         subjectData.touch();
 
         /*
          * Recalculate era after institution progression changes.
          *
-         * This updates:
-         * - current era if thresholds are reached
-         * - progress towards next era
+         * EraService is responsible for:
+         * - applying era calculation
+         * - persisting updated era state
          */
-        eraCalculationService.apply(subjectData);
-
-        // Persist the updated subject state.
-        repository.save(level, subjectData);
+        eraService.evaluateAndSave(level, subjectData);
     }
 
     /**

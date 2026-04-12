@@ -4,9 +4,11 @@ import com.rapitor3.riseofages.era.EraCalculationService;
 import com.rapitor3.riseofages.era.EraRegistry;
 import com.rapitor3.riseofages.institution.InstitutionRegistry;
 import com.rapitor3.riseofages.repository.ProgressRepository;
+import com.rapitor3.riseofages.service.EraService;
 import com.rapitor3.riseofages.service.ProgressService;
 import com.rapitor3.riseofages.service.SubjectService;
 
+import java.time.chrono.Era;
 import java.util.Objects;
 
 /**
@@ -47,6 +49,11 @@ public final class CoreServices {
     private final SubjectService subjectService;
 
     /**
+     * Service responsible for an era type.
+     */
+    private final EraService eraService;
+
+    /**
      * Service responsible for evaluating and applying era progression.
      */
     private final EraCalculationService eraCalculationService;
@@ -60,9 +67,11 @@ public final class CoreServices {
      * Creates immutable service container.
      *
      * @param eraRegistry era registry
+     * @param institutionRegistry institution registry
      * @param progressRepository progress repository
      * @param subjectService subject resolution service
      * @param eraCalculationService era calculation service
+     * @param eraService era service
      * @param progressService progress service
      */
     public CoreServices(
@@ -71,6 +80,7 @@ public final class CoreServices {
             ProgressRepository progressRepository,
             SubjectService subjectService,
             EraCalculationService eraCalculationService,
+            EraService eraService,
             ProgressService progressService
     ) {
         this.eraRegistry = Objects.requireNonNull(eraRegistry, "EraRegistry must not be null");
@@ -78,6 +88,7 @@ public final class CoreServices {
         this.progressRepository = Objects.requireNonNull(progressRepository, "ProgressRepository must not be null");
         this.subjectService = Objects.requireNonNull(subjectService, "SubjectService must not be null");
         this.eraCalculationService = Objects.requireNonNull(eraCalculationService, "EraCalculationService must not be null");
+        this.eraService = Objects.requireNonNull(eraService, "EraService must not be null");
         this.progressService = Objects.requireNonNull(progressService, "ProgressService must not be null");
     }
 
@@ -99,6 +110,10 @@ public final class CoreServices {
 
     public EraCalculationService getEraCalculationService() {
         return eraCalculationService;
+    }
+
+    public EraService getEraService() {
+        return eraService;
     }
 
     public ProgressService getProgressService() {

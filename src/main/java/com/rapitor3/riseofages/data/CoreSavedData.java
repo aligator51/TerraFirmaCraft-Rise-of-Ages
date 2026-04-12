@@ -178,16 +178,20 @@ public class CoreSavedData extends SavedData {
     public SubjectProgressData getOrCreateSubject(SubjectRef subjectRef) {
         Objects.requireNonNull(subjectRef, "SubjectRef must not be null");
 
-        SubjectProgressData data = subjects.computeIfAbsent(
-                subjectRef.id(),
-                ignored -> SubjectProgressData.empty(
-                        subjectRef,
-                        EraState.initial(EraKey.of("stone_age"))
-                )
+        SubjectProgressData existing = subjects.get(subjectRef.id());
+        if (existing != null) {
+            return existing;
+        }
+
+        SubjectProgressData created = SubjectProgressData.empty(
+                subjectRef,
+                EraState.initial(EraKey.of("stone_age"))
         );
 
+        subjects.put(subjectRef.id(), created);
         setDirty();
-        return data;
+
+        return created;
     }
 
     /**

@@ -5,6 +5,8 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.rapitor3.riseofages.bootstrap.CoreServices;
+import com.rapitor3.riseofages.era.EraDefinition;
+import com.rapitor3.riseofages.era.EraKey;
 import com.rapitor3.riseofages.institution.InstitutionDefinition;
 import com.rapitor3.riseofages.institution.InstitutionKey;
 import com.rapitor3.riseofages.institution.InstitutionState;
@@ -27,10 +29,14 @@ import java.util.Optional;
  * Supported flow:
  * /roa debug add <institution> <amount>
  * /roa debug info
+ * /roa debug reset
+ * /roa debug setera <era>
  *
- * Example:
+ * Examples:
  * /roa debug add smithing 5
  * /roa debug info
+ * /roa debug reset
+ * /roa debug setera iron_age
  */
 public final class DebugProgressCommand {
 
@@ -51,6 +57,7 @@ public final class DebugProgressCommand {
                 Commands.literal("roa")
                         .then(Commands.literal("debug")
                                 .requires(source -> source.hasPermission(2))
+
                                 .then(Commands.literal("add")
                                         .then(Commands.argument("institution", StringArgumentType.word())
                                                 .suggests(institutionSuggestions(coreServices))
@@ -64,11 +71,30 @@ public final class DebugProgressCommand {
                                                 )
                                         )
                                 )
+
                                 .then(Commands.literal("info")
                                         .executes(context -> executeInfo(
                                                 context.getSource(),
                                                 coreServices
                                         ))
+                                )
+
+                                .then(Commands.literal("reset")
+                                        .executes(context -> executeReset(
+                                                context.getSource(),
+                                                coreServices
+                                        ))
+                                )
+
+                                .then(Commands.literal("setera")
+                                        .then(Commands.argument("era", StringArgumentType.word())
+                                                .suggests(eraSuggestions(coreServices))
+                                                .executes(context -> executeSetEra(
+                                                        context.getSource(),
+                                                        coreServices,
+                                                        StringArgumentType.getString(context, "era")
+                                                ))
+                                        )
                                 )
                         )
         );
@@ -90,6 +116,26 @@ public final class DebugProgressCommand {
                         .stream()
                         .map(InstitutionDefinition::getKey)
                         .map(InstitutionKey::id),
+                builder
+        );
+    }
+
+    /**
+     * Suggestion provider for registered eras.
+     *
+     * This enables TAB completion for:
+     * /roa debug setera <era>
+     *
+     * @param coreServices initialized core services
+     * @return brigadier suggestion provider
+     */
+    private static SuggestionProvider<CommandSourceStack> eraSuggestions(CoreServices coreServices) {
+        return (context, builder) -> SharedSuggestionProvider.suggest(
+                coreServices.getEraRegistry()
+                        .getAll()
+                        .stream()
+                        .map(EraDefinition::getKey)
+                        .map(EraKey::id),
                 builder
         );
     }
@@ -228,6 +274,91 @@ public final class DebugProgressCommand {
     }
 
     /**
+     * Resets progression data for the executing player's subject.
+     *
+     * @param source command source
+     * @param coreServices core service container
+     * @return command result
+     */
+    private static int executeReset(
+            CommandSourceStack source,
+            CoreServices coreServices
+    ) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be executed by a player."));
+            return 0;
+        }
+
+        SubjectRef subjectRef = coreServices.getSubjectService().resolve(player);
+
+        boolean removed = coreServices.getProgressRepository()
+                .remove(player.serverLevel(), subjectRef)
+                .isPresent();
+
+        if (!removed) {
+            source.sendFailure(Component.literal("No progression data found to reset."));
+            return 0;
+        }
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Progression data reset for subject " + subjectRef.id()
+                ),
+                false
+        );
+
+        return 1;
+    }
+
+    /**
+     * Sets the current era manually for the executing player's subject.
+     *
+     * @param source command source
+     * @param coreServices core service container
+     * @param eraId target era id
+     * @return command result
+     */
+    private static int executeSetEra(
+            CommandSourceStack source,
+            CoreServices coreServices,
+            String eraId
+    ) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("This command can only be executed by a player."));
+            return 0;
+        }
+
+        EraKey targetEraKey = EraKey.of(eraId);
+
+        if (!coreServices.getEraRegistry().contains(targetEraKey)) {
+            source.sendFailure(Component.literal("Unknown era: " + eraId));
+            return 0;
+        }
+
+        SubjectRef subjectRef = coreServices.getSubjectService().resolve(player);
+
+        SubjectProgressData data = coreServices.getProgressRepository()
+                .getOrCreate(player.serverLevel(), subjectRef);
+
+        data.getEraState().advanceTo(targetEraKey);
+        data.getEraState().setProgressToNextEra(0.0D);
+        data.touch();
+
+        coreServices.getProgressRepository().save(player.serverLevel(), data);
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Set era to '" + eraId + "' for subject " + subjectRef.id()
+                ),
+                false
+        );
+
+        return 1;
+    }
+
+    /**
      * Sends a formatted debug line for a single institution.
      *
      * @param source command source
@@ -244,5 +375,4 @@ public final class DebugProgressCommand {
                 false
         );
     }
-
 }

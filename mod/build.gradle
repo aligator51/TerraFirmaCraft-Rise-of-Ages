@@ -61,6 +61,11 @@ dependencies {
     implementation project(':core')
 }
 
+ext {
+    mod_id = 'riseofages'
+    mod_name = 'TerraFirmaCraft: Rise of Ages'
+}
+
 tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version      : minecraft_version,

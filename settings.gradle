@@ -15,3 +15,5 @@ plugins {
 rootProject.name = 'riseofages'
 
 include 'core', 'mod'
+project(':core').projectDir = file('core')
+project(':mod').projectDir = file('mod')

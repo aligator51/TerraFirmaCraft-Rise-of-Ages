@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.rapitor3.riseofages.bootstrap.CoreBootstrap;
 import com.rapitor3.riseofages.bootstrap.CoreServices;
 import com.rapitor3.riseofages.command.ModCommands;
+import com.rapitor3.riseofages.gameplay.GameplayProgressEventHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -26,6 +27,7 @@ public class RiseOfAgesMod {
         this.coreServices = CoreBootstrap.bootstrap();
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.register(new GameplayProgressEventHandler(coreServices));
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {

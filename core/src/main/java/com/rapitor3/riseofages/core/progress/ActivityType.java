@@ -2,11 +2,11 @@ package com.rapitor3.riseofages.core.progress;
 
 /**
  * High-level type of activity that can produce progression.
- *
+ * <p>
  * IMPORTANT:
  * These values are intentionally generic.
  * Core should not depend on specific mods or specific block/entity implementations.
- *
+ * <p>
  * Examples:
  * - SMITHING for an anvil interaction
  * - COOKING for cooking-related activity
@@ -14,40 +14,15 @@ package com.rapitor3.riseofages.core.progress;
  */
 public enum ActivityType {
 
-    /**
-     * Fallback generic activity type.
-     * Useful for tests or unknown integrations.
-     */
     GENERIC,
-
-    /**
-     * Smithing-related activity.
-     */
-    SMITHING,
-
-    /**
-     * Cooking-related activity.
-     */
-    COOKING,
-
-    /**
-     * Carpentry-related activity.
-     */
-    CARPENTRY,
-
-    /**
-     * Agriculture-related activity.
-     */
-    AGRICULTURE,
-
-    /**
-     * Mining-related activity.
-     */
     MINING,
-
-    /**
-     * Structure-related activity.
-     * Example: structure registered, upgraded, or validated.
-     */
-    STRUCTURE
+    LOGGING,
+    GATHERING,
+    COOKING,
+    CRAFTING,
+    SMELTING,
+    FORGING,
+    TOOLMAKING,
+    BUILDING,
+    ENGINEERING
 }

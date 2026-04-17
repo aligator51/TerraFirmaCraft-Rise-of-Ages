@@ -19,13 +19,15 @@ public final class DefaultInstitutionRegistryFactory {
     }
 
     public static void registerDefaults(InstitutionRegistry registry) {
-        registry.register(institution("generic", "Generic", 10));
+        registry.register(institution("extraction", "Extraction", 10));
+        registry.register(institution("metallurgy", "Metallurgy", 10));
         registry.register(institution("smithing", "Smithing", 10));
-        registry.register(institution("cooking", "Cooking", 10));
-        registry.register(institution("carpentry", "Carpentry", 10));
         registry.register(institution("agriculture", "Agriculture", 10));
-        registry.register(institution("mining", "Mining", 10));
-        registry.register(institution("structure", "Structure", 10));
+        registry.register(institution("animal_husbandry", "Animal Husbandry", 10));
+        registry.register(institution("foodcraft", "Foodcraft", 10));
+        registry.register(institution("crafts", "Crafts", 10));
+        registry.register(institution("construction", "Construction", 10));
+        registry.register(institution("engineering", "Engineering", 10));
     }
 
     private static InstitutionDefinition institution(String id, String displayName, int maxLevel) {

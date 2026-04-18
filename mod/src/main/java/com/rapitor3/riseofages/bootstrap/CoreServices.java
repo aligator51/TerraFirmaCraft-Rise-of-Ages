@@ -3,8 +3,10 @@ package com.rapitor3.riseofages.bootstrap;
 import com.rapitor3.riseofages.core.era.EraCalculationService;
 import com.rapitor3.riseofages.core.era.EraRegistry;
 import com.rapitor3.riseofages.core.institution.InstitutionRegistry;
+import com.rapitor3.riseofages.core.profession.ProfessionRegistry;
 import com.rapitor3.riseofages.repository.ProgressRepository;
 import com.rapitor3.riseofages.service.EraService;
+import com.rapitor3.riseofages.service.ProfessionService;
 import com.rapitor3.riseofages.service.ProgressService;
 import com.rapitor3.riseofages.service.SubjectService;
 
@@ -62,25 +64,33 @@ public final class CoreServices {
      */
     private final ProgressService progressService;
 
+
+    private final ProfessionRegistry professionRegistry;
+
+
+    private final ProfessionService professionService;
+
     /**
      * Creates immutable service container.
      *
-     * @param eraRegistry era registry
-     * @param institutionRegistry institution registry
-     * @param progressRepository progress repository
-     * @param subjectService subject resolution service
+     * @param eraRegistry           era registry
+     * @param institutionRegistry   institution registry
+     * @param progressRepository    progress repository
+     * @param subjectService        subject resolution service
      * @param eraCalculationService era calculation service
-     * @param eraService era service
-     * @param progressService progress service
+     * @param eraService            era service
+     * @param progressService       progress service
      */
     public CoreServices(
             EraRegistry eraRegistry,
             InstitutionRegistry institutionRegistry,
+            ProfessionRegistry professionRegistry,
             ProgressRepository progressRepository,
             SubjectService subjectService,
             EraCalculationService eraCalculationService,
             EraService eraService,
-            ProgressService progressService
+            ProgressService progressService,
+            ProfessionService professionService
     ) {
         this.eraRegistry = Objects.requireNonNull(eraRegistry, "EraRegistry must not be null");
         this.institutionRegistry = Objects.requireNonNull(institutionRegistry, "InstitutionRegistry must not be null");
@@ -89,13 +99,15 @@ public final class CoreServices {
         this.eraCalculationService = Objects.requireNonNull(eraCalculationService, "EraCalculationService must not be null");
         this.eraService = Objects.requireNonNull(eraService, "EraService must not be null");
         this.progressService = Objects.requireNonNull(progressService, "ProgressService must not be null");
+        this.professionService = Objects.requireNonNull(professionService, "ProfessionService must not be null");
+        this.professionRegistry = Objects.requireNonNull(professionRegistry, "ProfessionRegistry must not be null");
     }
 
     public EraRegistry getEraRegistry() {
         return eraRegistry;
     }
 
-    public InstitutionRegistry getInstitutionRegistry(){
+    public InstitutionRegistry getInstitutionRegistry() {
         return institutionRegistry;
     }
 
@@ -117,5 +129,13 @@ public final class CoreServices {
 
     public ProgressService getProgressService() {
         return progressService;
+    }
+
+    public com.rapitor3.riseofages.core.profession.ProfessionRegistry getProfessionRegistry() {
+        return professionRegistry;
+    }
+
+    public ProfessionService getProfessionService() {
+        return professionService;
     }
 }

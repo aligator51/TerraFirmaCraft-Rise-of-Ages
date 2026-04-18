@@ -3,6 +3,9 @@ package com.rapitor3.riseofages.core.progress;
 import com.rapitor3.riseofages.core.era.EraState;
 import com.rapitor3.riseofages.core.institution.InstitutionKey;
 import com.rapitor3.riseofages.core.institution.InstitutionState;
+import com.rapitor3.riseofages.core.profession.ProfessionDefinition;
+import com.rapitor3.riseofages.core.profession.ProfessionKey;
+import com.rapitor3.riseofages.core.profession.ProfessionState;
 import com.rapitor3.riseofages.core.subject.SubjectRef;
 
 import java.util.Collection;
@@ -24,10 +27,11 @@ import java.util.Optional;
  * - subject identity
  * - current era state
  * - institution progression
+ * - profession progression
  *
  * IMPORTANT:
  * This class stores state only.
- * It does NOT define progression rules.
+ * It does NOT define era or institution progression formulas.
  */
 public class SubjectProgressData {
 
@@ -50,6 +54,16 @@ public class SubjectProgressData {
     private final Map<InstitutionKey, InstitutionState> institutions;
 
     /**
+     * Profession progression state of this subject.
+     *
+     * Stores:
+     * - profession experience by track
+     * - invested profession points
+     * - total spent profession points
+     */
+    private final ProfessionState professionState;
+
+    /**
      * Last update timestamp.
      *
      * Recommended usage:
@@ -58,7 +72,10 @@ public class SubjectProgressData {
     private long updatedAt;
 
     /**
-     * Creates a new subject progress data container.
+     * Creates a new subject progress data container without explicit profession state.
+     *
+     * Backward-compatible constructor.
+     * New code should prefer the full constructor with professionState.
      *
      * @param subjectRef owner subject reference
      * @param eraState current era state
@@ -71,9 +88,35 @@ public class SubjectProgressData {
             Map<InstitutionKey, InstitutionState> institutions,
             long updatedAt
     ) {
+        this(
+                subjectRef,
+                eraState,
+                institutions,
+                ProfessionState.empty(),
+                updatedAt
+        );
+    }
+
+    /**
+     * Creates a new subject progress data container.
+     *
+     * @param subjectRef owner subject reference
+     * @param eraState current era state
+     * @param institutions existing institution states
+     * @param professionState profession progression state
+     * @param updatedAt last update timestamp
+     */
+    public SubjectProgressData(
+            SubjectRef subjectRef,
+            EraState eraState,
+            Map<InstitutionKey, InstitutionState> institutions,
+            ProfessionState professionState,
+            long updatedAt
+    ) {
         this.subjectRef = Objects.requireNonNull(subjectRef, "SubjectProgressData.subjectRef must not be null");
         this.eraState = Objects.requireNonNull(eraState, "SubjectProgressData.eraState must not be null");
         this.institutions = new HashMap<>(Objects.requireNonNull(institutions, "SubjectProgressData.institutions must not be null"));
+        this.professionState = Objects.requireNonNull(professionState, "SubjectProgressData.professionState must not be null");
         this.updatedAt = updatedAt;
     }
 
@@ -89,6 +132,7 @@ public class SubjectProgressData {
                 subjectRef,
                 initialEra,
                 new HashMap<>(),
+                ProfessionState.empty(),
                 System.currentTimeMillis()
         );
     }
@@ -119,6 +163,19 @@ public class SubjectProgressData {
      */
     public Map<InstitutionKey, InstitutionState> getInstitutionMap() {
         return Collections.unmodifiableMap(institutions);
+    }
+
+    /**
+     * Returns profession progression state of this subject.
+     *
+     * Important:
+     * prefer mutating profession progression through helper methods
+     * on this class so that subject updatedAt stays in sync.
+     *
+     * @return mutable profession state
+     */
+    public ProfessionState getProfessionState() {
+        return professionState;
     }
 
     public long getUpdatedAt() {
@@ -220,12 +277,100 @@ public class SubjectProgressData {
         return institutions.containsKey(key);
     }
 
+    /**
+     * Adds profession experience into a specific profession track.
+     *
+     * This is MOD-SPECIFIC experience.
+     * It is NOT vanilla Minecraft experience.
+     *
+     * @param key profession track key
+     * @param amount positive experience amount
+     */
+    public void addProfessionExperience(ProfessionKey key, long amount) {
+        Objects.requireNonNull(key, "ProfessionKey must not be null");
+
+        professionState.addExperience(key, amount);
+        touch();
+    }
+
+    /**
+     * Checks whether one more profession point can be invested
+     * into the given profession track.
+     *
+     * @param definition profession definition
+     * @return true if the next point can be invested
+     */
+    public boolean canInvestProfessionPoint(ProfessionDefinition definition) {
+        Objects.requireNonNull(definition, "ProfessionDefinition must not be null");
+        return professionState.canInvestPoint(definition);
+    }
+
+    /**
+     * Invests one profession point into the given profession track.
+     *
+     * @param definition profession definition
+     * @throws IllegalStateException if the point cannot be invested
+     */
+    public void investProfessionPoint(ProfessionDefinition definition) {
+        Objects.requireNonNull(definition, "ProfessionDefinition must not be null");
+
+        professionState.investPoint(definition);
+        touch();
+    }
+
+    /**
+     * Checks whether this subject has any profession specialization.
+     *
+     * @return true if at least one profession point was invested
+     */
+    public boolean hasProfessionSpecialization() {
+        return professionState.hasAnyInvestedPoints();
+    }
+
+    /**
+     * Checks whether one more profession point can be invested
+     * into the given profession track using an external rule set.
+     *
+     * @param definition profession definition
+     * @param rules progression rules
+     * @return true if the next point can be invested
+     */
+    public boolean canInvestProfessionPoint(
+            ProfessionDefinition definition,
+            com.rapitor3.riseofages.core.profession.ProfessionProgressionRules rules
+    ) {
+        Objects.requireNonNull(definition, "ProfessionDefinition must not be null");
+        Objects.requireNonNull(rules, "ProfessionProgressionRules must not be null");
+
+        return professionState.canInvestPoint(definition, rules);
+    }
+
+    /**
+     * Invests one profession point into the given profession track
+     * using an external rule set.
+     *
+     * @param definition profession definition
+     * @param rules progression rules
+     * @throws IllegalStateException if the point cannot be invested
+     */
+    public void investProfessionPoint(
+            ProfessionDefinition definition,
+            com.rapitor3.riseofages.core.profession.ProfessionProgressionRules rules
+    ) {
+        Objects.requireNonNull(definition, "ProfessionDefinition must not be null");
+        Objects.requireNonNull(rules, "ProfessionProgressionRules must not be null");
+
+        professionState.investPoint(definition, rules);
+        touch();
+    }
+
     @Override
     public String toString() {
         return "SubjectProgressData{" +
                 "subjectRef=" + subjectRef +
                 ", eraState=" + eraState +
                 ", institutions=" + institutions +
+                ", professionState=" + professionState +
                 ", updatedAt=" + updatedAt +
                 '}';
     }

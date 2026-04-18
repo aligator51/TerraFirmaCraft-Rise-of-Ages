@@ -5,6 +5,7 @@ import com.rapitor3.riseofages.bootstrap.CoreBootstrap;
 import com.rapitor3.riseofages.bootstrap.CoreServices;
 import com.rapitor3.riseofages.command.ModCommands;
 import com.rapitor3.riseofages.gameplay.GameplayProgressEventHandler;
+import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedEventHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -28,6 +29,7 @@ public class RiseOfAgesMod {
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.register(new GameplayProgressEventHandler(coreServices));
+        MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedEventHandler(coreServices));
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {

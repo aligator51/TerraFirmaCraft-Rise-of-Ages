@@ -2,6 +2,7 @@ package com.rapitor3.riseofages.gameplay;
 
 import com.rapitor3.riseofages.bootstrap.CoreServices;
 import com.rapitor3.riseofages.core.institution.InstitutionKey;
+import com.rapitor3.riseofages.core.profession.ProfessionKey;
 import com.rapitor3.riseofages.core.progress.ActivityType;
 import com.rapitor3.riseofages.core.progress.ProgressEvent;
 import com.rapitor3.riseofages.core.subject.SubjectRef;
@@ -10,6 +11,7 @@ import com.rapitor3.riseofages.gameplay.progress.NoVillageSubjectResolver;
 import com.rapitor3.riseofages.gameplay.progress.PlayerInstitutionFocusService;
 import com.rapitor3.riseofages.gameplay.progress.ProgressDistribution;
 import com.rapitor3.riseofages.gameplay.progress.VillageSubjectResolver;
+import com.rapitor3.riseofages.service.ProfessionService;
 import com.rapitor3.riseofages.service.ProgressService;
 import com.rapitor3.riseofages.service.SubjectService;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,8 +41,11 @@ public class GameplayProgressEventHandler {
     private static final InstitutionKey CONSTRUCTION = InstitutionKey.of("construction");
     private static final InstitutionKey ENGINEERING = InstitutionKey.of("engineering");
 
+    private static final ProfessionKey EXTRACTION_PROFESSION = ProfessionKey.of("extraction");
+
     private final ProgressService progressService;
     private final SubjectService subjectService;
+    private final ProfessionService professionService;
 
     private final PlayerInstitutionFocusService focusService;
     private final VillageSubjectResolver villageSubjectResolver;
@@ -64,6 +69,14 @@ public class GameplayProgressEventHandler {
         this.subjectService = Objects.requireNonNull(coreServices.getSubjectService(), "SubjectService must not be null");
         this.focusService = Objects.requireNonNull(focusService, "PlayerInstitutionFocusService must not be null");
         this.villageSubjectResolver = Objects.requireNonNull(villageSubjectResolver, "VillageSubjectResolver must not be null");
+        this.professionService = Objects.requireNonNull(coreServices.getProfessionService(), "ProfessionService must not be null");
+    }
+
+    private record ProfessionXpDescriptor(
+            ProfessionKey profession,
+            ActivityType activityType,
+            double baseAmount
+    ) {
     }
 
     @SubscribeEvent
@@ -76,12 +89,15 @@ public class GameplayProgressEventHandler {
             return;
         }
 
-        ProgressDescriptor descriptor = resolveBlockBreakProgress(event.getState());
-        if (descriptor == null) {
-            return;
+        ProgressDescriptor progressDescriptor = resolveBlockBreakProgress(event.getState());
+        if (progressDescriptor != null) {
+            handleProgress(player, level, progressDescriptor, "forge:block_break");
         }
 
-        handleProgress(player, level, descriptor, "forge:block_break");
+        ProfessionXpDescriptor professionDescriptor = resolveBlockBreakProfessionXp(event.getState());
+        if (professionDescriptor != null) {
+            handleProfessionXp(player, level, professionDescriptor, "forge:block_break");
+        }
     }
 
     @SubscribeEvent
@@ -172,6 +188,80 @@ public class GameplayProgressEventHandler {
 
         progressService.record(level, progressEvent);
     }
+
+    private void handleProfessionXp(
+            ServerPlayer player,
+            ServerLevel level,
+            ProfessionXpDescriptor descriptor,
+            String source
+    ) {
+        if (descriptor == null) {
+            return;
+        }
+
+        double amount = descriptor.baseAmount();
+        if (amount <= 0.0D) {
+            return;
+        }
+
+        SubjectRef subjectRef = subjectService.resolve(player);
+
+        professionService.addExperience(
+                level,
+                subjectRef,
+                descriptor.profession(),
+                descriptor.activityType(),
+                amount,
+                source + "/personal"
+        );
+    }
+
+    private ProfessionXpDescriptor resolveBlockBreakProfessionXp(BlockState state) {
+        if (state == null || state.isAir()) {
+            return null;
+        }
+
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        String path = blockId == null ? "" : blockId.getPath().toLowerCase(Locale.ROOT);
+
+        if (state.is(BlockTags.LOGS)) {
+            return new ProfessionXpDescriptor(
+                    EXTRACTION_PROFESSION,
+                    ActivityType.LOGGING,
+                    1.0D
+            );
+        }
+
+        if (state.is(BlockTags.MINEABLE_WITH_PICKAXE)) {
+            double amount = 1.0D;
+
+            if (path.contains("ore")) {
+                amount += 2.0D;
+            }
+
+            if (path.contains("deepslate")) {
+                amount += 1.0D;
+            }
+
+            return new ProfessionXpDescriptor(
+                    EXTRACTION_PROFESSION,
+                    ActivityType.MINING,
+                    amount
+            );
+        }
+
+        if (state.is(BlockTags.MINEABLE_WITH_SHOVEL)
+                && containsAny(path, "clay", "gravel", "sand", "dirt")) {
+            return new ProfessionXpDescriptor(
+                    EXTRACTION_PROFESSION,
+                    ActivityType.GATHERING,
+                    0.5D
+            );
+        }
+
+        return null;
+    }
+
 
     private void recordForVillageSubject(
             ServerPlayer player,

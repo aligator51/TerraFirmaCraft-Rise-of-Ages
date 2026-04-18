@@ -4,6 +4,8 @@ import com.rapitor3.riseofages.core.era.EraKey;
 import com.rapitor3.riseofages.core.era.EraState;
 import com.rapitor3.riseofages.core.institution.InstitutionKey;
 import com.rapitor3.riseofages.core.institution.InstitutionState;
+import com.rapitor3.riseofages.core.profession.ProfessionKey;
+import com.rapitor3.riseofages.core.profession.ProfessionState;
 import com.rapitor3.riseofages.core.progress.SubjectProgressData;
 import com.rapitor3.riseofages.core.subject.SubjectRef;
 import com.rapitor3.riseofages.core.subject.SubjectType;
@@ -304,6 +306,7 @@ public class CoreSavedData extends SavedData {
             institutionsList.add(writeInstitutionState(institutionState));
         }
         tag.put("institutions", institutionsList);
+        tag.put("profession_state", writeProfessionState(data.getProfessionState()));
 
         return tag;
     }
@@ -326,10 +329,15 @@ public class CoreSavedData extends SavedData {
             institutions.put(institutionState.getKey(), institutionState);
         }
 
+        ProfessionState professionState = tag.contains("profession_state", Tag.TAG_COMPOUND)
+                ? readProfessionState(tag.getCompound("profession_state"))
+                : ProfessionState.empty();
+
         return new SubjectProgressData(
                 subjectRef,
                 eraState,
                 institutions,
+                professionState,
                 updatedAt
         );
     }
@@ -422,6 +430,40 @@ public class CoreSavedData extends SavedData {
     }
 
     /**
+     * Serializes profession state into NBT.
+     *
+     * @param state profession state
+     * @return serialized NBT tag
+     */
+    private static CompoundTag writeProfessionState(ProfessionState state) {
+        CompoundTag tag = new CompoundTag();
+
+        tag.putInt("total_spent_points", state.getTotalSpentPoints());
+        tag.putLong("updated_at", state.getUpdatedAt());
+
+        ListTag experienceList = new ListTag();
+        for (Map.Entry<ProfessionKey, Long> entry : state.getExperienceByProfession().entrySet()) {
+            CompoundTag entryTag = new CompoundTag();
+            entryTag.putString("key", entry.getKey().id());
+            entryTag.putLong("value", entry.getValue());
+            experienceList.add(entryTag);
+        }
+        tag.put("experience", experienceList);
+
+        ListTag investedPointsList = new ListTag();
+        for (Map.Entry<ProfessionKey, Integer> entry : state.getInvestedPointsByProfession().entrySet()) {
+            CompoundTag entryTag = new CompoundTag();
+            entryTag.putString("key", entry.getKey().id());
+            entryTag.putInt("value", entry.getValue());
+            investedPointsList.add(entryTag);
+        }
+        tag.put("invested_points", investedPointsList);
+
+        return tag;
+    }
+
+
+    /**
      * Deserializes institution state from NBT.
      *
      * @param tag source NBT tag
@@ -439,6 +481,42 @@ public class CoreSavedData extends SavedData {
                 level,
                 progress,
                 totalValue,
+                updatedAt
+        );
+    }
+
+    /**
+     * Deserializes profession state from NBT.
+     *
+     * @param tag source NBT tag
+     * @return parsed profession state
+     */
+    private static ProfessionState readProfessionState(CompoundTag tag) {
+        Map<ProfessionKey, Long> experienceByProfession = new HashMap<>();
+        ListTag experienceList = tag.getList("experience", Tag.TAG_COMPOUND);
+        for (Tag element : experienceList) {
+            CompoundTag entryTag = (CompoundTag) element;
+            ProfessionKey key = ProfessionKey.of(entryTag.getString("key"));
+            long value = entryTag.getLong("value");
+            experienceByProfession.put(key, value);
+        }
+
+        Map<ProfessionKey, Integer> investedPointsByProfession = new HashMap<>();
+        ListTag investedPointsList = tag.getList("invested_points", Tag.TAG_COMPOUND);
+        for (Tag element : investedPointsList) {
+            CompoundTag entryTag = (CompoundTag) element;
+            ProfessionKey key = ProfessionKey.of(entryTag.getString("key"));
+            int value = entryTag.getInt("value");
+            investedPointsByProfession.put(key, value);
+        }
+
+        int totalSpentPoints = tag.getInt("total_spent_points");
+        long updatedAt = tag.getLong("updated_at");
+
+        return new ProfessionState(
+                experienceByProfession,
+                investedPointsByProfession,
+                totalSpentPoints,
                 updatedAt
         );
     }

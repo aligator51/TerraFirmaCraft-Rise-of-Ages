@@ -3,6 +3,7 @@ package com.rapitor3.riseofages.service;
 import com.rapitor3.riseofages.core.profession.ProfessionKey;
 import com.rapitor3.riseofages.core.profession.ProfessionTitle;
 import com.rapitor3.riseofages.core.profession.ProfessionState;
+import com.rapitor3.riseofages.core.progress.ActivityType;
 import com.rapitor3.riseofages.core.subject.SubjectRef;
 import net.minecraft.server.level.ServerLevel;
 
@@ -10,13 +11,13 @@ import java.util.Optional;
 
 /**
  * Application service responsible for profession progression.
- *
+ * <p>
  * Responsibilities:
  * - grant mod-specific profession experience
  * - validate profession point investment
  * - invest profession points
  * - resolve current profession title
- *
+ * <p>
  * IMPORTANT:
  * This service uses mod/world persistence through ProgressRepository.
  * It does not access SavedData directly.
@@ -25,14 +26,14 @@ public interface ProfessionService {
 
     /**
      * Grants profession experience to a subject.
-     *
+     * <p>
      * This is mod-specific profession XP.
      * It is NOT vanilla Minecraft XP.
      *
-     * @param level server level
-     * @param subjectRef target subject
+     * @param level         server level
+     * @param subjectRef    target subject
      * @param professionKey target profession track
-     * @param amount positive experience amount
+     * @param amount        positive experience amount
      */
     void addExperience(ServerLevel level, SubjectRef subjectRef, ProfessionKey professionKey, long amount);
 
@@ -40,8 +41,8 @@ public interface ProfessionService {
      * Checks whether one more profession point can be invested
      * into the given profession track.
      *
-     * @param level server level
-     * @param subjectRef target subject
+     * @param level         server level
+     * @param subjectRef    target subject
      * @param professionKey target profession track
      * @return true if one more point can be invested
      */
@@ -50,8 +51,8 @@ public interface ProfessionService {
     /**
      * Invests one profession point into the given profession track.
      *
-     * @param level server level
-     * @param subjectRef target subject
+     * @param level         server level
+     * @param subjectRef    target subject
      * @param professionKey target profession track
      */
     void investPoint(ServerLevel level, SubjectRef subjectRef, ProfessionKey professionKey);
@@ -59,7 +60,7 @@ public interface ProfessionService {
     /**
      * Resolves the current profession title of the subject.
      *
-     * @param level server level
+     * @param level      server level
      * @param subjectRef target subject
      * @return resolved profession title
      */
@@ -68,9 +69,21 @@ public interface ProfessionService {
     /**
      * Finds profession state for a subject if subject progression exists.
      *
-     * @param level server level
+     * @param level      server level
      * @param subjectRef target subject
      * @return optional profession state
      */
     Optional<ProfessionState> findState(ServerLevel level, SubjectRef subjectRef);
+
+    int getAllocatedPoints(ServerLevel level, SubjectRef subjectRef, ProfessionKey professionKey);
+
+    void addExperience(
+            ServerLevel level,
+            SubjectRef subjectRef,
+            ProfessionKey professionKey,
+            ActivityType activityType,
+            double amount,
+            String source
+    );
+
 }

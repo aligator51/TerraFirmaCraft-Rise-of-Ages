@@ -7,6 +7,7 @@ import com.rapitor3.riseofages.core.profession.ProfessionRegistry;
 import com.rapitor3.riseofages.core.profession.ProfessionState;
 import com.rapitor3.riseofages.core.profession.ProfessionTitle;
 import com.rapitor3.riseofages.core.profession.ProfessionTitleResolver;
+import com.rapitor3.riseofages.core.progress.ActivityType;
 import com.rapitor3.riseofages.core.progress.SubjectProgressData;
 import com.rapitor3.riseofages.repository.ProgressRepository;
 import com.rapitor3.riseofages.core.subject.SubjectRef;
@@ -17,7 +18,7 @@ import java.util.Optional;
 
 /**
  * Default implementation of ProfessionService.
- *
+ * <p>
  * Responsibilities:
  * - load or create subject progression data
  * - apply profession XP changes
@@ -50,10 +51,10 @@ public class DefaultProfessionService implements ProfessionService {
     /**
      * Creates a new profession service.
      *
-     * @param repository progression repository
+     * @param repository         progression repository
      * @param professionRegistry profession registry
-     * @param progressionRules profession progression rules
-     * @param titleResolver profession title resolver
+     * @param progressionRules   profession progression rules
+     * @param titleResolver      profession title resolver
      */
     public DefaultProfessionService(
             ProgressRepository repository,
@@ -125,6 +126,35 @@ public class DefaultProfessionService implements ProfessionService {
 
         return repository.find(level, subjectRef)
                 .map(SubjectProgressData::getProfessionState);
+    }
+
+    @Override
+    public int getAllocatedPoints(ServerLevel level, SubjectRef subjectRef, ProfessionKey professionKey) {
+        Objects.requireNonNull(level, "ServerLevel must not be null");
+        Objects.requireNonNull(subjectRef, "SubjectRef must not be null");
+        Objects.requireNonNull(professionKey, "ProfessionKey must not be null");
+
+        SubjectProgressData data = repository.getOrCreate(level, subjectRef);
+        ProfessionState professionState = data.getProfessionState();
+
+        return professionState.getInvestedPoints(professionKey);
+    }
+
+    @Override
+    public void addExperience(
+            ServerLevel level,
+            SubjectRef subjectRef,
+            ProfessionKey professionKey,
+            ActivityType activityType,
+            double amount,
+            String source
+    ) {
+        if (level == null || subjectRef == null || professionKey == null || amount <= 0.0D) {
+            return;
+        }
+
+        long normalizedAmount = Math.max(1L, Math.round(amount));
+        addExperience(level, subjectRef, professionKey, normalizedAmount);
     }
 
     /**

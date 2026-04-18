@@ -4,10 +4,9 @@
   <img src="docs/images/banner.png" alt="Rise of Ages Banner" width="900"/>
 </p>
 
-
 ![Java](https://img.shields.io/badge/Java-21-orange)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.20.x-green)
-![Forge](https://img.shields.io/badge/Forge-Modding-red)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-green)
+![Forge](https://img.shields.io/badge/Forge-47.4.10-red)
 ![Gradle](https://img.shields.io/badge/Build-Gradle-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -17,55 +16,78 @@ A modular progression framework for TerraFirmaCraft-focused gameplay.
 
 ## 🚀 Overview
 
-**Rise of Ages** is a progression system built as a modular architecture.
+**Rise of Ages** is a progression system for TerraFirmaCraft built around three connected layers:
 
-The goal is to provide:
-- subject-based progression (player, group, settlement)
-- institution development (smithing, cooking, etc.)
-- era-based advancement
-- extensibility for other mods
+- **scientific and technical development** through institution progress
+- **social development** through era progression
+- **player specialization** through profession point investment
+
+The project is designed as a modular architecture so that progression rules can stay decoupled from Minecraft-specific integration.
 
 ---
 
 ## 🧱 Architecture
 
 ```text
-Service Layer      → ProgressService, SubjectService
-Repository Layer   → ProgressRepository
-Data Layer         → CoreSavedData
-Domain Layer       → Subject, Institution, Era, Progress
+core domain
+├── Subjects            → SubjectRef, SubjectType
+├── Institutions        → InstitutionDefinition, InstitutionState, InstitutionRegistry
+├── Professions         → ProfessionDefinition, ProfessionState, ProfessionRegistry
+├── Eras                → EraDefinition, EraState, EraRegistry
+└── Progress            → ProgressEvent, SubjectProgressData
+
+mod integration
+├── Persistence         → ProgressRepository, SavedDataProgressRepository, CoreSavedData
+├── Services            → ProgressService, ProfessionService, SubjectService, EraService
+├── Bootstrap           → CoreBootstrap, CoreServices
+└── Commands / UI       → debug commands, future screens and sync
 ```
 
 ---
 
-## 📦 Modules
+## 📦 Current Systems
 
-### core
-Main progression engine.
+### Subjects
+A **subject** is any entity that can own progression data.
 
-Contains:
-- subject system (`SubjectRef`)
-- institution system (`InstitutionState`)
-- era system (`EraState`)
-- progression model (`ProgressEvent`, `SubjectProgressData`)
-- persistence (`CoreSavedData`)
-- services (`ProgressService`, `SubjectService`)
-- repository layer
+Planned subject types:
+- player
+- group
+- settlement
 
----
+Current implementation is focused on players.
 
-### institutions *(planned)*
+### Institutions
+Institutions represent long-term development branches of society.
+
+Current default registry:
+- extraction
+- metallurgy
 - smithing
-- cooking
-- carpentry
 - agriculture
+- animal husbandry
+- foodcraft
+- crafts
+- construction
+- engineering
 
----
+Institutions are used as the main signal for **era progression**.
 
-### structures *(planned)*
-- smithy validation
-- kitchen zones
-- workshops
+### Professions
+Professions represent **player specialization**.
+
+Current design:
+- all profession tracks are visible to the player
+- the player earns **mod-specific profession XP** in different tracks
+- profession points are invested manually after enough XP is accumulated
+- the player has a **global point cap** and must choose between specialization and generalization
+
+This makes professions a player-facing build system rather than a passive stat line.
+
+### Eras
+Eras represent the current development stage of the subject or society.
+
+They are resolved from broader progression state rather than selected manually in normal gameplay.
 
 ---
 
@@ -73,7 +95,10 @@ Contains:
 
 ```text
 root
-├── src/
+├── src-core/
+│   └── main/java/com/rapitor3/riseofages/core/
+├── src-mod/
+│   └── main/java/com/rapitor3/riseofages/
 ├── docs/
 └── README.md
 ```
@@ -83,12 +108,14 @@ root
 ## ⚙️ Running the Project
 
 ```bash
-  gradlew.bat runClient
+gradlew.bat runClient
 ```
 
 ---
 
 ## 🔁 Progression Flow
+
+### Institution Progress Example
 
 ```java
 SubjectRef subjectRef = subjectService.resolve(player);
@@ -105,43 +132,65 @@ ProgressEvent event = ProgressEvent.now(
 progressService.record(level, event);
 ```
 
+### Profession Progress Example
+
+```java
+SubjectRef subjectRef = subjectService.resolve(player);
+
+professionService.addExperience(
+        level,
+        subjectRef,
+        ProfessionKey.of("smithing"),
+        100
+);
+
+if (professionService.canInvestPoint(level, subjectRef, ProfessionKey.of("smithing"))) {
+    professionService.investPoint(level, subjectRef, ProfessionKey.of("smithing"));
+}
+```
+
 ---
 
 ## 🧠 Core Concepts
 
 ### Subject
-Entity that receives progression:
-- player
-- group (future)
-- settlement (future)
+The owner of progression data.
 
 ### Institution
-Represents a progression branch:
-- smithing
-- cooking
+A long-term societal development branch.
+
+### Profession
+A player specialization track driven by XP and point investment.
 
 ### Era
-Represents global development stage.
+A broader stage of development derived from progression state.
 
 ### ProgressEvent
-Atomic unit of progression.
+An atomic progression record used to feed institution progression.
 
 ---
 
-## 📚 Documentation
+## 🛠 Debug Commands
 
-See:
+Current debug tooling includes profession commands for testing without GUI:
 
-docs/development/project-setup.md
+```text
+/roa debug profession addxp <profession> <amount>
+/roa debug profession invest <profession>
+/roa debug profession info
+```
+
+These commands are intended for balancing and iteration while the gameplay hooks and GUI are still in development.
 
 ---
 
-## 🧩 Design Principles
+## 📚 Design Principles
 
-- separation of concerns
-- modular architecture
-- extensibility
-- no hard dependency on TFC in core
+- separation of domain and Minecraft integration
+- data-driven registries where possible
+- explicit service layer for gameplay operations
+- persistence behind repository abstractions
+- progression systems that can be extended later with GUI, sync, and balancing
 
 ---
 
@@ -149,13 +198,18 @@ docs/development/project-setup.md
 
 Current:
 - core progression system implemented
-- repository + service layer ready
+- institution registry and era calculation wired
+- profession registry, state, and titles added
+- profession service and progression rules added
+- profession debug commands available
+- saved-data-backed persistence in place
 
-Planned:
-- era registry
-- balancing
-- UI layer
-- networking sync
+Next:
+- profession content and bonuses
+- gameplay hooks for profession XP gain
+- GUI for institutions and professions
+- balancing and progression pacing
+- networking and client sync
 
 ---
 

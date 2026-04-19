@@ -1,38 +1,36 @@
 package com.rapitor3.riseofages.gameplay.profession;
 
-import com.rapitor3.riseofages.core.profession.ProfessionKey;
-import com.rapitor3.riseofages.core.profession.effect.ExtractionMiningSpeedPolicy;
+import com.rapitor3.riseofages.core.profession.effect.DefaultProfessionEffectLayer;
+import com.rapitor3.riseofages.core.profession.effect.ProfessionEffectLayer;
+import com.rapitor3.riseofages.core.profession.effect.ProfessionEffectSnapshot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
- * Applies mining speed bonuses from the extraction profession.
+ * Client-side handler that applies profession mining speed effects.
  *
- * <p>This handler is intended to run on the physical client only.
- * It reads already-synced profession points from {@link ClientProfessionState}
- * and adjusts local block breaking speed.
+ * <p>This handler does not read server persistence directly.
+ * It uses the synced client profession cache and the unified profession
+ * effect layer to resolve mining speed.
  * </p>
  */
 public final class ProfessionMiningSpeedEventHandler {
 
-    private static final ProfessionKey EXTRACTION = ProfessionKey.of("extraction");
-
-    private final ExtractionMiningSpeedPolicy speedPolicy;
+    private final ProfessionEffectLayer effectLayer;
     private final ExtractionBlockClassifier blockClassifier;
 
     /**
      * Creates a new mining speed event handler.
      */
     public ProfessionMiningSpeedEventHandler() {
-        this.speedPolicy = new ExtractionMiningSpeedPolicy();
+        this.effectLayer = new DefaultProfessionEffectLayer();
         this.blockClassifier = new ExtractionBlockClassifier();
     }
 
     /**
-     * Applies extraction mining speed multiplier when the player mines a
-     * supported block.
+     * Applies mining speed multiplier for extraction-related blocks.
      *
      * @param event break speed event
      */
@@ -41,20 +39,17 @@ public final class ProfessionMiningSpeedEventHandler {
         Player player = event.getEntity();
         BlockState state = event.getState();
 
-        if (!player.level().isClientSide()) {
+        if (player == null || state == null) {
             return;
         }
 
-        if (state == null || !blockClassifier.matches(state)) {
+        if (!blockClassifier.matches(state)) {
             return;
         }
 
-        if (ClientProfessionState.isEmpty()) {
-            return;
-        }
+        ProfessionEffectSnapshot effects = effectLayer.resolve(ClientProfessionState::getInvestedPoints);
 
-        int allocatedPoints = ClientProfessionState.getInvestedPoints(EXTRACTION);
-        float multiplier = speedPolicy.resolveMultiplier(allocatedPoints);
+        float multiplier = effects.miningSpeedMultiplier();
         float newSpeed = event.getOriginalSpeed() * multiplier;
 
         event.setNewSpeed(newSpeed);

@@ -6,6 +6,9 @@ import com.rapitor3.riseofages.bootstrap.CoreServices;
 import com.rapitor3.riseofages.command.ModCommands;
 import com.rapitor3.riseofages.gameplay.GameplayProgressEventHandler;
 import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedEventHandler;
+import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedServerEventHandler;
+import com.rapitor3.riseofages.gameplay.profession.ProfessionSyncEventHandler;
+import com.rapitor3.riseofages.network.ModNetwork;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -27,17 +30,16 @@ public class RiseOfAgesMod {
     public RiseOfAgesMod() {
         this.coreServices = CoreBootstrap.bootstrap();
 
+        ModNetwork.register();
+
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.register(new GameplayProgressEventHandler(coreServices));
-        MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedEventHandler(coreServices));
+        MinecraftForge.EVENT_BUS.register(new ProfessionSyncEventHandler(coreServices));
+        MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedServerEventHandler());
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
         ModCommands.register(event, coreServices);
-    }
-
-    private void commonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("HELLO FROM COMMON SETUP");
     }
 
     @SubscribeEvent
@@ -49,7 +51,7 @@ public class RiseOfAgesMod {
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            LOGGER.info("HELLO FROM CLIENT SETUP");
+            MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedEventHandler());
         }
     }
 }

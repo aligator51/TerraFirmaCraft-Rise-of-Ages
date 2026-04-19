@@ -323,4 +323,59 @@ public class ProfessionState {
         totalSpentPoints++;
         updatedAt = System.currentTimeMillis();
     }
+
+    public void removeExperience(ProfessionKey key, long amount) {
+        Objects.requireNonNull(key, "ProfessionKey must not be null");
+
+        if (amount <= 0L) {
+            return;
+        }
+
+        long current = getExperience(key);
+        long updated = Math.max(current - amount, 0L);
+
+        if (updated == 0L) {
+            experienceByProfession.remove(key);
+        } else {
+            experienceByProfession.put(key, updated);
+        }
+
+        updatedAt = System.currentTimeMillis();
+    }
+
+    public void setInvestedPoints(ProfessionDefinition definition, int amount) {
+        Objects.requireNonNull(definition, "ProfessionDefinition must not be null");
+
+        if (amount < 0) {
+            throw new IllegalArgumentException("Profession points must not be negative.");
+        }
+
+        if (amount > definition.getMaxPoints()) {
+            throw new IllegalArgumentException(
+                    "Profession points exceed max for '" + definition.getKey().id() +
+                            "': " + amount + " > " + definition.getMaxPoints()
+            );
+        }
+
+        ProfessionKey key = definition.getKey();
+        int current = getInvestedPoints(key);
+        int recalculatedTotal = totalSpentPoints - current + amount;
+
+        if (recalculatedTotal > GLOBAL_POINT_CAP) {
+            throw new IllegalStateException(
+                    "Cannot set points for '" + key.id() +
+                            "'. Global point cap would be exceeded: " +
+                            recalculatedTotal + " > " + GLOBAL_POINT_CAP
+            );
+        }
+
+        if (amount == 0) {
+            investedPointsByProfession.remove(key);
+        } else {
+            investedPointsByProfession.put(key, amount);
+        }
+
+        totalSpentPoints = recalculatedTotal;
+        updatedAt = System.currentTimeMillis();
+    }
 }

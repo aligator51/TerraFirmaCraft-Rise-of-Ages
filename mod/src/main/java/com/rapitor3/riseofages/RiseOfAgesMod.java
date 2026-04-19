@@ -3,12 +3,15 @@ package com.rapitor3.riseofages;
 import com.mojang.logging.LogUtils;
 import com.rapitor3.riseofages.bootstrap.CoreBootstrap;
 import com.rapitor3.riseofages.bootstrap.CoreServices;
+import com.rapitor3.riseofages.client.input.KeyMappingHandler;
+import com.rapitor3.riseofages.client.input.ModKeyMappings;
 import com.rapitor3.riseofages.command.ModCommands;
 import com.rapitor3.riseofages.gameplay.GameplayProgressEventHandler;
 import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedEventHandler;
 import com.rapitor3.riseofages.gameplay.profession.ProfessionSyncEventHandler;
 import com.rapitor3.riseofages.network.ModNetwork;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -46,9 +49,16 @@ public class RiseOfAgesMod {
 
     @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
+
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedEventHandler());
+            event.enqueueWork(() -> MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedEventHandler()));
+            event.enqueueWork(() -> MinecraftForge.EVENT_BUS.register(new KeyMappingHandler()));
+        }
+
+        @SubscribeEvent
+        public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+            event.register(ModKeyMappings.OPEN_PROFESSIONS);
         }
     }
 }

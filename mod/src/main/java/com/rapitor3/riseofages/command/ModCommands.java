@@ -22,5 +22,6 @@ public final class ModCommands {
      */
     public static void register(RegisterCommandsEvent event, CoreServices coreServices) {
         DebugProgressCommand.register(event.getDispatcher(), coreServices);
+        ProfessionMenuCommand.register(event.getDispatcher());
     }
 }

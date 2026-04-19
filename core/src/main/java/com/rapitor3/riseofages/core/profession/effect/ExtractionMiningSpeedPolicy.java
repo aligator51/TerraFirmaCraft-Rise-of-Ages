@@ -27,17 +27,17 @@ public final class ExtractionMiningSpeedPolicy {
      */
     public float resolveMultiplier(int allocatedPoints) {
         if (allocatedPoints <= 0) {
-            return 0.90f;
+            return 0.10f;
         }
         if (allocatedPoints <= 2) {
             return 1.00f;
         }
         if (allocatedPoints <= 5) {
-            return 1.10f;
+            return 1.50f;
         }
         if (allocatedPoints <= 8) {
-            return 1.20f;
+            return 2.00f;
         }
-        return 1.30f;
+        return 3.00f;
     }
 }

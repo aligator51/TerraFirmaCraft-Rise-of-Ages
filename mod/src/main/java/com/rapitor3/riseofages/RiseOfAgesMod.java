@@ -6,7 +6,6 @@ import com.rapitor3.riseofages.bootstrap.CoreServices;
 import com.rapitor3.riseofages.command.ModCommands;
 import com.rapitor3.riseofages.gameplay.GameplayProgressEventHandler;
 import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedEventHandler;
-import com.rapitor3.riseofages.gameplay.profession.ProfessionMiningSpeedServerEventHandler;
 import com.rapitor3.riseofages.gameplay.profession.ProfessionSyncEventHandler;
 import com.rapitor3.riseofages.network.ModNetwork;
 import net.minecraftforge.api.distmarker.Dist;
@@ -16,7 +15,6 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.slf4j.Logger;
 
 @Mod(RiseOfAgesMod.MODID)
@@ -35,7 +33,6 @@ public class RiseOfAgesMod {
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.register(new GameplayProgressEventHandler(coreServices));
         MinecraftForge.EVENT_BUS.register(new ProfessionSyncEventHandler(coreServices));
-        MinecraftForge.EVENT_BUS.register(new ProfessionMiningSpeedServerEventHandler());
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
